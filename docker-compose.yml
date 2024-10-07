@@ -1,0 +1,67 @@
+# สร้าง Network
+networks:
+  web_network:
+    name: lamp_network
+    driver: bridge
+
+# สร้าง Service
+services:
+  # MySQL Service
+  mysql:
+    image: mysql:latest
+    container_name: lamp_mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+      - MYSQL_DATABASE=sample_db
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=1234
+    volumes:
+      - ./mysql/data:/var/lib/mysql/ # สร้าง Volume สำหรับเก็บข้อมูล
+      - ./mysql/initdb/:/docker-entrypoint-initdb.d/ # init script สำหรับสร้าง Table
+    ports:
+      - "4406:3306"
+    networks:
+      - web_network
+    restart: always
+  # PHP Service
+  php:
+    depends_on:
+      - mysql
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: lamp_php
+    volumes:
+      - ./public_html/:/var/www/html/
+    expose:
+      - 9000
+    networks:
+      - web_network
+    restart: always
+  # Nginx Service
+  nginx:
+    depends_on:
+      - php
+    image: nginx:stable-alpine
+    container_name: lamp_nginx
+    volumes:
+      - ./public_html/:/var/www/html/
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    networks:
+      - web_network
+    restart: always
+
+# docker network ls
+
+# docker compose config - การตรวจสอบความถูกต้อง สมบูรณ์ของไฟล์ docker compose ถ้าถูกต้องจะแสดงการกำหนดค่าที่เราตั้งไว้ แต่ถ้าผิดจะฟ้อง Error ตำแหน่งที่มันไม่รู้จัก
+# docker compose up -d -> คำสั่ง Run Docker Compose ใช้ครั้ง แรก
+# docker compose up -d --build-> คำสั่ง Run Docker Compose สำหรับการแก้ไข Script ที่ Run ไม่ผ่านทำใหม่
+
+# docker compose ps -> การแสดงรายการ Container ถ้า Container นั้นมีสถานะ UP คือทำงานปกติ 
+
+# docker compose down -> คำสั่ง เอาออก หรือ ลบ Container & Network แต่เก็บ Image เอาไว้ ปกติแค่ Down เฉยก็พอ
+# docker compose down --rmi all -> คำสั่งลบออกทั้งหมด Container , Image , Network
+
+# docker network rm _id_ -> คำสั่ง ลบ network
